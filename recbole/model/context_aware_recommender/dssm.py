@@ -70,12 +70,7 @@ class DSSM(ContextRecommender):
             xavier_normal_(module.weight.data)
             if module.bias is not None:
                 constant_(module.bias.data, 0)
-
-    def forward(self, interaction):
-        # user_sparse_embedding shape: [batch_size, user_token_seq_field_num + user_token_field_num , embed_dim] or None
-        # user_dense_embedding shape: [batch_size, user_float_field_num] or [batch_size, user_float_field_num, embed_dim] or None
-        # item_sparse_embedding shape: [batch_size, item_token_seq_field_num + item_token_field_num , embed_dim] or None
-        # item_dense_embedding shape: [batch_size, item_float_field_num] or [batch_size, item_float_field_num, embed_dim] or None
+    def get_ui_matrices(self, interaction):
         embed_result = self.double_tower_embed_input_fields(interaction)
         user_sparse_embedding, user_dense_embedding = embed_result[:2]
         item_sparse_embedding, item_dense_embedding = embed_result[2:]
@@ -95,6 +90,14 @@ class DSSM(ContextRecommender):
             item.append(item_dense_embedding)
 
         embed_item = torch.cat(item, dim=1)
+        return embed_user, embed_item
+
+    def forward(self, interaction):
+        # user_sparse_embedding shape: [batch_size, user_token_seq_field_num + user_token_field_num , embed_dim] or None
+        # user_dense_embedding shape: [batch_size, user_float_field_num] or [batch_size, user_float_field_num, embed_dim] or None
+        # item_sparse_embedding shape: [batch_size, item_token_seq_field_num + item_token_field_num , embed_dim] or None
+        # item_dense_embedding shape: [batch_size, item_float_field_num] or [batch_size, item_float_field_num, embed_dim] or None
+        embed_user, embed_item = self.get_ui_matrices(interaction)
 
         batch_size = embed_item.shape[0]
         user_dnn_out = self.user_mlp_layers(embed_user.view(batch_size, -1))
